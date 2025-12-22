@@ -1,14 +1,12 @@
 package com.cu2mber.memberservice.member.dto;
 
-
-import com.cu2mber.memberservice.member.domain.Member;
+import com.cu2mber.memberservice.member.enums.AuthProvider;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-import java.time.LocalDate;
-
-public record UserSingUpRequest(
+public record SignUpSocialUserRequest(
         @NotBlank(message = "아이디를 입력해주세요.")
         @Pattern(
                 regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$",
@@ -40,15 +38,12 @@ public record UserSingUpRequest(
                 regexp = "^[0-9]{6}",
                 message = "생년월일은 991231 형식으로 입력해주세요."
         )
-        LocalDate memberBirth
+        String memberBirth,
+
+        @NotNull
+        AuthProvider provider,
+
+        @NotBlank
+        String providerId
 ) {
-    public static UserSingUpRequest userSingUpRequest(Member member) {
-        return new UserSingUpRequest(
-                member.getMemberEmail(),
-                member.getMemberName(),
-                member.getMemberPwd(),
-                member.getMemberPhone(),
-                member.getMemberBirth()
-        );
-    }
 }

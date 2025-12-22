@@ -1,5 +1,8 @@
-package com.cu2mber.memberservice.member.role;
+package com.cu2mber.memberservice.member.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum MemberRole {
     ADMIN("ROLE_ADMIN"),
     USER("ROLE_USER"),
@@ -9,9 +12,5 @@ public enum MemberRole {
 
     MemberRole(String role) {
         this.role = role;
-    }
-
-    public String getRole() {
-        return role;
     }
 }

@@ -1,6 +1,7 @@
 package com.cu2mber.memberservice.member.domain;
 
-import com.cu2mber.memberservice.member.role.MemberRole;
+import com.cu2mber.memberservice.member.enums.AuthProvider;
+import com.cu2mber.memberservice.member.enums.MemberRole;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,6 +15,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Table(name = "members")
 public class Member {
+
+    private static final LocalDate DEFAULT_GOV_BIRTH = LocalDate.of(2000, 1, 1);
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,6 +41,13 @@ public class Member {
     @Column(nullable = false)
     private LocalDate memberBirth;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AuthProvider authProvider;
+
+    @Column(nullable = false)
+    private String providerId;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -46,12 +56,53 @@ public class Member {
 
     private LocalDateTime withdrawalAt;
 
-    public Member(String memberName, String memberEmail, MemberRole memberRole, String memberPwd, String memberPhone, LocalDate memberBirth) {
+    private Member(String memberName, String memberEmail, MemberRole memberRole, String memberPwd, String memberPhone, LocalDate memberBirth, AuthProvider authProvider, String providerId) {
         this.memberName = memberName;
         this.memberEmail = memberEmail;
         this.memberRole = memberRole;
         this.memberPwd = memberPwd;
         this.memberPhone = memberPhone;
         this.memberBirth = memberBirth;
+        this.authProvider = authProvider;
+        this.providerId = providerId;
+    }
+
+    public static Member ofNewUser(String memberName, String memberEmail, String memberPwd, String memberPhone, LocalDate memberBirth) {
+        return new Member(
+                memberName,
+                memberEmail,
+                MemberRole.USER,
+                memberPwd,
+                memberPhone,
+                memberBirth,
+                AuthProvider.LOCAL,
+                "LOCAL"
+        );
+    }
+
+    public static Member ofNewGov(String memberName, String memberEmail, String memberPwd, String memberPhone) {
+        return new Member(
+                memberName,
+                memberEmail,
+                MemberRole.GOV,
+                memberPwd,
+                memberPhone,
+                DEFAULT_GOV_BIRTH,
+                AuthProvider.LOCAL,
+                "LOCAL"
+        );
+    }
+
+    public static Member ofNewSocialUser(String memberName, String memberEmail, String memberPwd, String memberPhone, LocalDate memberBirth, AuthProvider authProvider, String providerId) {
+        return new Member(
+                memberName,
+                memberEmail,
+                MemberRole.USER,
+                memberPwd,
+                memberPhone,
+                memberBirth,
+                authProvider,
+                providerId
+        );
     }
 }
