@@ -1,14 +1,20 @@
 package com.cu2mber.memberservice.member.service;
 
-import com.cu2mber.memberservice.member.dto.SignUpGovRequest;
-import com.cu2mber.memberservice.member.dto.SignUpSocialUserRequest;
-import com.cu2mber.memberservice.member.dto.SingUpUserRequest;
+import com.cu2mber.memberservice.member.dto.request.*;
+import com.cu2mber.memberservice.member.dto.response.MemberResponse;
+import com.cu2mber.memberservice.member.enums.MemberRole;
 
 public interface MemberService {
 
-    void signUpUser(SingUpUserRequest singUpUserRequest);
+    void signUpUser(SignUpUserRequest signUpUserRequest);
 
     void signUpGov(SignUpGovRequest signUpGovRequest);
 
-    void signUpSocialUser(SignUpSocialUserRequest signUpSocialUserRequest);
+    MemberResponse socialLoginOrSignUp(SignUpSocialUserRequest request);
+
+    MemberResponse getMember(long memberNo);
+
+    void signInMember(SignInMemberRequest signInMemberRequest);
+
+    void updateMember(long memberNo, MemberRole role, UpdateMemberRequest request);
 }

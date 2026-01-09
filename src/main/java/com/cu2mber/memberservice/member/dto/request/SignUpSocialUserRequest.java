@@ -1,4 +1,4 @@
-package com.cu2mber.memberservice.member.dto;
+package com.cu2mber.memberservice.member.dto.request;
 
 import com.cu2mber.memberservice.member.enums.AuthProvider;
 import jakarta.validation.constraints.NotBlank;
@@ -17,14 +17,6 @@ public record SignUpSocialUserRequest(
         @NotBlank(message = "본인의 이름을 정자로 입력해주세요.")
         @Size(min = 2, max = 20, message = "이름은 2자 이상 20자 이하로 입력해주세요.")
         String memberName,
-
-        @NotBlank(message = "비밀번호를 입력해주세요.")
-        @Pattern(
-                regexp = "^(?=(?:.*[A-Za-z].*){0,})(?=(?:.*\\d.*){0,})(?=(?:.*[!@#$%^&*].*){0,}).{8,20}$" +
-                        "(?:(?=.*[A-Za-z].*)(?=.*\\d.*)|(?=.*[A-Za-z].*)(?=.*[!@#$%^&*].*)|(?=.*\\d.*)(?=.*[!@#$%^&*].*))",
-                message = "비밀번호는 8~20자, 영문/숫자/특수문자 중 2가지 이상을 조합해야 합니다."
-        )
-        String memberPwd,
 
         @NotBlank(message = "- 를 제외한 휴대폰번호를 입력해주세요.")
         @Pattern(

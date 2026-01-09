@@ -105,4 +105,28 @@ public class Member {
                 providerId
         );
     }
+
+    public void updateUser(String name, String pwd, String phone) {
+        if(name != null) {
+            this.memberName = name;
+        }
+        if(pwd != null) {
+            this.memberPwd = pwd;
+        }
+        if(phone != null) {
+            this.memberPhone = phone;
+        }
+    }
+
+    public void updateGov(String name, String pwd, String phone) {
+        if(name != null) {
+            this.memberName = name;
+        }
+        if(pwd != null) {
+            this.memberPwd = pwd;
+        }
+        if(phone != null) {
+            this.memberPhone = phone;
+        }
+    }
 }

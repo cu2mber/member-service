@@ -1,6 +1,5 @@
-package com.cu2mber.memberservice.member.dto;
+package com.cu2mber.memberservice.member.dto.request;
 
-import com.cu2mber.memberservice.member.domain.Member;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
@@ -17,11 +16,13 @@ public record SignUpGovRequest(
 
         @NotBlank(message = "비밀번호를 입력해주세요.")
         @Pattern(
-                regexp = "^(?=(?:.*[A-Za-z].*){0,})(?=(?:.*\\d.*){0,})(?=(?:.*[!@#$%^&*].*){0,}).{8,20}$" +
-                        "(?:(?=.*[A-Za-z].*)(?=.*\\d.*)|(?=.*[A-Za-z].*)(?=.*[!@#$%^&*].*)|(?=.*\\d.*)(?=.*[!@#$%^&*].*))",
+                regexp = "^(?=.*[A-Za-z])(?=.*[\\d!@#$%^&*]).{8,20}$",
                 message = "비밀번호는 8~20자, 영문/숫자/특수문자 중 2가지 이상을 조합해야 합니다."
         )
         String memberPwd,
+
+        @NotBlank(message = "비밀번호를 다시 입력해주세요.")
+        String confirmPassword,
 
         @NotBlank(message = "지자체 전화번호를 입력해주세요.")
         @Pattern(
