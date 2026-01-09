@@ -23,6 +23,14 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 
+/**
+ * 회원 관련 비즈니스 로직을 처리하는 서비스 구현체입니다.
+ * <p>
+ * 일반 회원 / 지자체 회원 / 소셜 회원의 가입, 로그인, 조회, 수정 기능을 담당하며
+ * 회원 상태(탈퇴 여부), 인증 제공자(AuthProvider), 권한(MemberRole)을 기준으로
+ * 각 로직을 분기 처리합니다.
+ * </p>
+ */
 @Service
 @Transactional
 @Slf4j
@@ -32,6 +40,17 @@ public class MemberServiceImpl implements MemberService {
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * 일반 회원 가입을 처리합니다.
+     * <p>
+     * 이메일 중복 여부를 검증하고,
+     * 비밀번호 암호화 및 생년월일 파싱 후 회원을 저장합니다.
+     * </p>
+     *
+     * @param signUpUserRequest 일반 회원 가입 요청 정보
+     * @throws ConflictException 이메일이 이미 존재하는 경우
+     * @throws BadRequestException 생년월일 형식이 올바르지 않은 경우
+     */
     @Override
     public void signUpUser(SignUpUserRequest signUpUserRequest) {
         log.debug("일반 회원가입 시작! 회원 정보: {}", signUpUserRequest);
@@ -52,6 +71,15 @@ public class MemberServiceImpl implements MemberService {
         memberRepository.save(member);
     }
 
+    /**
+     * 지자체 회원 가입을 처리합니다.
+     * <p>
+     * 현재는 기본 구조만 존재하며,
+     * 추후 관리자 승인 로직이 추가될 예정입니다.
+     * </p>
+     *
+     * @param signUpGovRequest 지자체 회원 가입 요청 정보
+     */
     @Override
     public void signUpGov(SignUpGovRequest signUpGovRequest) {
         log.debug("지자체 회원가입 시작! 회원 정보: {}", signUpGovRequest);
@@ -59,6 +87,16 @@ public class MemberServiceImpl implements MemberService {
         // 관리자 요청 로직 구현 후 완성예정
     }
 
+    /**
+     * 소셜 로그인 또는 소셜 회원 가입을 처리합니다.
+     * <p>
+     * 동일한 이메일과 인증 제공자(AuthProvider)를 가진 회원이 존재하면 로그인 처리하고,
+     * 존재하지 않으면 신규 회원으로 가입 처리합니다.
+     * </p>
+     *
+     * @param request 소셜 회원 가입/로그인 요청 정보
+     * @return 회원 정보 응답 DTO
+     */
     @Transactional(readOnly = true)
     @Override
     public MemberResponse socialLoginOrSignUp(SignUpSocialUserRequest request) {
@@ -81,6 +119,13 @@ public class MemberServiceImpl implements MemberService {
         return MemberResponse.from(member);
     }
 
+    /**
+     * 회원 번호로 회원 정보를 조회합니다.
+     *
+     * @param memberNo 회원 번호
+     * @return 회원 정보 응답 DTO
+     * @throws NotFoundException 회원이 존재하지 않는 경우
+     */
     @Transactional(readOnly = true)
     @Override
     public MemberResponse getMember(long memberNo) {
@@ -92,6 +137,16 @@ public class MemberServiceImpl implements MemberService {
         return MemberResponse.from(member);
     }
 
+    /**
+     * 일반 로그인(Local 로그인)을 처리합니다.
+     * <p>
+     * 소셜 로그인 사용자는 해당 메서드를 통해 로그인할 수 없습니다.
+     * </p>
+     *
+     * @param request 로그인 요청 정보
+     * @throws NotFoundException 회원이 존재하지 않는 경우
+     * @throws UnauthorizedException 인증 제공자가 LOCAL이 아니거나 비밀번호가 일치하지 않는 경우
+     */
     @Transactional(readOnly = true)
     @Override
     public void signInMember(SignInMemberRequest request) {
@@ -110,6 +165,15 @@ public class MemberServiceImpl implements MemberService {
         }
     }
 
+    /**
+     * 회원 권한에 따라 회원 정보를 수정합니다.
+     *
+     * @param memberNo 회원 번호
+     * @param role 회원 권한
+     * @param request 회원 수정 요청 정보
+     * @throws UnauthorizedException 수정 권한이 없는 경우
+     */
+    @Override
     public void updateMember(long memberNo, MemberRole role, UpdateMemberRequest request) {
         switch (role) {
             case USER -> updateUser(memberNo, request);
@@ -118,6 +182,12 @@ public class MemberServiceImpl implements MemberService {
         }
     }
 
+    /**
+     * 일반 회원의 정보를 수정합니다.
+     *
+     * @param memberNo 회원 번호
+     * @param request 수정 요청 정보
+     */
     private void updateUser(long memberNo, UpdateMemberRequest request) {
         Member member = memberRepository
                 .findByMemberNoAndWithdrawalAtIsNull(memberNo)
@@ -144,16 +214,35 @@ public class MemberServiceImpl implements MemberService {
         );
     }
 
+    /**
+     * 지자체 회원 정보 수정 처리 메서드입니다.
+     * <p>
+     * 추후 관리자 승인 로직 추가 예정입니다.
+     * </p>
+     */
     private void updateGov(UpdateMemberRequest request) {
         // 추후 관리자 요청 로직 구현 후 완성 예정
     }
 
+    /**
+     * 이메일 중복 여부를 검증합니다.
+     *
+     * @param email 회원 이메일
+     * @throws ConflictException 이미 존재하는 이메일인 경우
+     */
     private void validateDuplicateEmail(String email){
         if(memberRepository.existsByMemberEmailAndWithdrawalAtIsNull(email)){
             throw new ConflictException("이미 존재하는 이메일입니다.");
         }
     }
 
+    /**
+     * 생년월일(yyMMdd)을 LocalDate로 변환합니다.
+     *
+     * @param birth 생년월일 문자열
+     * @return 변환된 LocalDate
+     * @throws BadRequestException 형식이 잘못되었거나 미래 날짜인 경우
+     */
     private LocalDate parseBirth(String birth){
         // 기본 형식 검증 (혹시 모를 방어)
         if (birth == null || !birth.matches("^\\d{6}$")) {
@@ -192,6 +281,12 @@ public class MemberServiceImpl implements MemberService {
         return birthDate;
     }
 
+    /**
+     * 회원 수정 요청이 비어있는지 검증합니다.
+     *
+     * @param request 수정 요청 정보
+     * @throws BadRequestException 수정할 항목이 하나도 없는 경우
+     */
     private void validateUpdate(UpdateMemberRequest request) {
         if(request.memberName() == null
                 && request.newPassword() == null
