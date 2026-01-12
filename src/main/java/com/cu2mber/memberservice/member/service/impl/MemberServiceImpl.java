@@ -1,9 +1,6 @@
 package com.cu2mber.memberservice.member.service.impl;
 
-import com.cu2mber.memberservice.common.exception.BadRequestException;
-import com.cu2mber.memberservice.common.exception.ConflictException;
-import com.cu2mber.memberservice.common.exception.NotFoundException;
-import com.cu2mber.memberservice.common.exception.UnauthorizedException;
+import com.cu2mber.memberservice.common.exception.*;
 import com.cu2mber.memberservice.member.domain.Member;
 import com.cu2mber.memberservice.member.dto.request.*;
 import com.cu2mber.memberservice.member.dto.response.MemberResponse;
@@ -171,14 +168,14 @@ public class MemberServiceImpl implements MemberService {
      * @param memberNo 회원 번호
      * @param role 회원 권한
      * @param request 회원 수정 요청 정보
-     * @throws UnauthorizedException 수정 권한이 없는 경우
+     * @throws ForbiddenException 수정 권한이 없는 경우
      */
     @Override
     public void updateMember(long memberNo, MemberRole role, UpdateMemberRequest request) {
         switch (role) {
             case USER -> updateUser(memberNo, request);
             case GOV -> updateGov(request);
-            default -> throw new UnauthorizedException("수정 권한이 없습니다.");
+            default -> throw new ForbiddenException("수정 권한이 없습니다.");
         }
     }
 
