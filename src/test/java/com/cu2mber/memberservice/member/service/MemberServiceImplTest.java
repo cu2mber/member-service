@@ -92,7 +92,7 @@ class MemberServiceImplTest {
 
         Member member = mock(Member.class);
 
-        when(memberRepository.findByMemberEmailAndWithdrawalAtIsNull(request.memberEmail())).thenReturn(Optional.of(member));
+        when(memberRepository.findByMemberEmailAndMemberStatus_Active(request.memberEmail())).thenReturn(Optional.of(member));
         when(member.getAuthProvider()).thenReturn(AuthProvider.LOCAL);
         when(member.getMemberPwd()).thenReturn("encoded-password");
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(true);
@@ -101,7 +101,7 @@ class MemberServiceImplTest {
                 () -> memberService.signInMember(request)
         );
 
-        verify(memberRepository, times(1)).findByMemberEmailAndWithdrawalAtIsNull(request.memberEmail());
+        verify(memberRepository, times(1)).findByMemberEmailAndMemberStatus_Active(request.memberEmail());
 
         verify(passwordEncoder, times(1)).matches(anyString(), anyString());
     }
@@ -117,11 +117,11 @@ class MemberServiceImplTest {
         Member member = mock(Member.class);
 
         when(member.getAuthProvider()).thenReturn(AuthProvider.GOOGLE);
-        when(memberRepository.findByMemberEmailAndWithdrawalAtIsNull(anyString())).thenReturn(Optional.of(member));
+        when(memberRepository.findByMemberEmailAndMemberStatus_Active(anyString())).thenReturn(Optional.of(member));
 
         Assertions.assertThrows(UnauthorizedException.class, () -> memberService.signInMember(request));
 
-        verify(memberRepository, times(1)).findByMemberEmailAndWithdrawalAtIsNull(anyString());
+        verify(memberRepository, times(1)).findByMemberEmailAndMemberStatus_Active(anyString());
         verify(member, times(1)).getAuthProvider();
     }
 
@@ -130,7 +130,7 @@ class MemberServiceImplTest {
     void socialLogin_ExistingUser() {
         Member member = mock(Member.class);
 
-        when(memberRepository.findByMemberEmailAndWithdrawalAtIsNull(anyString())).thenReturn(Optional.of(member));
+        when(memberRepository.findByMemberEmailAndMemberStatus_Active(anyString())).thenReturn(Optional.of(member));
         when(member.getMemberNo()).thenReturn(1L);
         when(member.getMemberEmail()).thenReturn("social@test.com");
         when(member.getAuthProvider()).thenReturn(AuthProvider.GOOGLE);
@@ -196,13 +196,13 @@ class MemberServiceImplTest {
 
         Member member = mock(Member.class);
 
-        when(memberRepository.findByMemberNoAndWithdrawalAtIsNull(memberNo)).thenReturn(Optional.of(member));
+        when(memberRepository.findByMemberNoAndMemberStatus_Active(memberNo)).thenReturn(Optional.of(member));
 
         Assertions.assertThrows(BadRequestException.class,
                 () -> memberService.updateMember(memberNo, MemberRole.USER, request)
         );
 
-        verify(memberRepository, times(1)).findByMemberNoAndWithdrawalAtIsNull(memberNo);
+        verify(memberRepository, times(1)).findByMemberNoAndMemberStatus_Active(memberNo);
         verify(member, never()).updateUser(any(), any(), any());
     }
 
@@ -221,7 +221,7 @@ class MemberServiceImplTest {
 
         Member member = mock(Member.class);
 
-        when(memberRepository.findByMemberNoAndWithdrawalAtIsNull(memberNo)).thenReturn(Optional.of(member));
+        when(memberRepository.findByMemberNoAndMemberStatus_Active(memberNo)).thenReturn(Optional.of(member));
 
         // when & then
         BadRequestException exception = Assertions.assertThrows(BadRequestException.class,

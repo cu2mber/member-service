@@ -2,6 +2,7 @@ package com.cu2mber.memberservice.member.repository;
 
 import com.cu2mber.memberservice.member.domain.Member;
 import com.cu2mber.memberservice.member.enums.AuthProvider;
+import com.cu2mber.memberservice.member.enums.MemberStatus;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
@@ -34,12 +35,12 @@ class MemberRepositoryTest {
     }
 
     @Test
-    @DisplayName("existsByMemberEmailAndWithdrawalAtIsNull - 존재하면 true")
-    void existsByMemberEmailAndWithdrawalAtIsNull_true() {
+    @DisplayName("existsByMemberEmail - 존재하면 true")
+    void existsByMemberEmail_true() {
         Member member = settingMember();
         entityManager.clear();
 
-        Boolean exists = memberRepository.existsByMemberEmailAndWithdrawalAtIsNull(member.getMemberEmail());
+        Boolean exists = memberRepository.existsByMemberEmail(member.getMemberEmail());
 
         Assertions.assertTrue(exists);
     }
@@ -56,11 +57,11 @@ class MemberRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByMemberEmailAndWithdrawalAtIsNull - 정상 회원 조회")
-    void findByMemberEmailAndWithdrawalAtIsNull() {
+    @DisplayName("findByMemberEmailAndMemberStatus - 정상 회원 조회")
+    void findByMemberEmailAndMemberStatus() {
         settingMember();
 
-        Optional<Member> result = memberRepository.findByMemberEmailAndWithdrawalAtIsNull("test@test.com");
+        Optional<Member> result = memberRepository.findByMemberEmailAndMemberStatus("test@test.com", MemberStatus.ACTIVE);
 
         Assertions.assertTrue(result.isPresent());
         Assertions.assertEquals("회원1", result.get().getMemberName());
@@ -70,11 +71,11 @@ class MemberRepositoryTest {
     }
 
     @Test
-    @DisplayName("findByMemberNoAndWithdrawalAtIsNull - 정상 회원 조회")
-    void findByMemberNoAndWithdrawalAtIsNull() {
+    @DisplayName("findByMemberNoAndMemberStatus_Active - 정상 회원 조회")
+    void findByMemberNoAndMemberStatus_Active() {
         Member member = settingMember();
 
-        Optional<Member> result = memberRepository.findByMemberNoAndWithdrawalAtIsNull(member.getMemberNo());
+        Optional<Member> result = memberRepository.findByMemberNoAndMemberStatus(member.getMemberNo(), MemberStatus.ACTIVE);
 
         Assertions.assertTrue(result.isPresent());
         Assertions.assertEquals("회원1", result.get().getMemberName());

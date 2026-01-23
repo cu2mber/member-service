@@ -6,6 +6,7 @@ import com.cu2mber.memberservice.member.dto.request.*;
 import com.cu2mber.memberservice.member.dto.response.MemberResponse;
 import com.cu2mber.memberservice.member.enums.AuthProvider;
 import com.cu2mber.memberservice.member.enums.MemberRole;
+import com.cu2mber.memberservice.member.enums.MemberStatus;
 import com.cu2mber.memberservice.member.repository.MemberRepository;
 import com.cu2mber.memberservice.member.service.MemberService;
 
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 회원 관련 비즈니스 로직을 처리하는 서비스 구현체입니다.
@@ -75,13 +78,24 @@ public class MemberServiceImpl implements MemberService {
      * 추후 관리자 승인 로직이 추가될 예정입니다.
      * </p>
      *
-     * @param signUpGovRequest 지자체 회원 가입 요청 정보
+     * @param request 지자체 회원 가입 요청 정보
      */
     @Override
-    public void signUpGov(SignUpGovRequest signUpGovRequest) {
-        log.debug("지자체 회원가입 시작! 회원 정보: {}", signUpGovRequest);
+    public void signUpGov(SignUpGovRequest request) {
+        log.debug("지자체 회원가입 시작! 회원 정보: {}", request);
 
-        // 관리자 요청 로직 구현 후 완성예정
+        validateDuplicateEmail(request.memberEmail());
+
+        String encodePassword = passwordEncoder.encode(request.memberPwd());
+
+        Member govMember = Member.ofNewGov(
+                request.memberName(),
+                request.memberEmail(),
+                encodePassword,
+                request.memberPhone()
+        );
+
+        memberRepository.save(govMember);
     }
 
     /**
@@ -94,26 +108,39 @@ public class MemberServiceImpl implements MemberService {
      * @param request 소셜 회원 가입/로그인 요청 정보
      * @return 회원 정보 응답 DTO
      */
-    @Transactional(readOnly = true)
+    @Transactional
     @Override
     public MemberResponse socialLoginOrSignUp(SignUpSocialUserRequest request) {
-        log.debug("소셜 회원가입 시작! 회원 정보: {}", request);
+        log.debug("소셜 로그인/가입 시작! 회원 정보: {}", request);
 
-        Member member = memberRepository
-                .findByMemberEmailAndAuthProvider(request.memberEmail(), request.provider())
-                .orElseGet(() -> {
-                    Member newMember = Member.ofNewSocialUser(
-                            request.memberName(),
-                            request.memberEmail(),
-                            "password",
-                            request.memberPhone(),
-                            parseBirth(request.memberBirth()),
-                            request.provider(),
-                            request.providerId()
-                    );
-                    return memberRepository.save(newMember);
-                });
-        return MemberResponse.from(member);
+        Optional<Member> existingMember = memberRepository.findByMemberEmailAndMemberStatus(request.memberEmail(), MemberStatus.ACTIVE);
+
+        if (existingMember.isPresent()) {
+            Member member = existingMember.get();
+            AuthProvider joinedProvider = member.getAuthProvider();
+
+            validateAccountStatusForLogin(member);
+
+            if (joinedProvider != request.provider()) {
+                String providerName = (joinedProvider == AuthProvider.LOCAL) ? "일반" : joinedProvider.name();
+                throw new ConflictException("해당 이메일은 이미 " + providerName + "계정으로 가입되어 있습니다.");
+            }
+
+            return MemberResponse.from(member);
+        }
+
+        log.debug("신규 소셜 회원 가입 진행: {}", request.memberEmail());
+        Member newMember = Member.ofNewSocialUser(
+                request.memberName(),
+                request.memberEmail(),
+                passwordEncoder.encode(UUID.randomUUID().toString()),
+                request.memberPhone(),
+                parseBirth(request.memberBirth()),
+                request.provider(),
+                request.providerId()
+        );
+
+        return MemberResponse.from(memberRepository.save(newMember));
     }
 
     /**
@@ -149,16 +176,21 @@ public class MemberServiceImpl implements MemberService {
     public void signInMember(SignInMemberRequest request) {
         log.debug("로그인 시작! 회원 이메일 : {}", request.toString());
 
-        Member getMember = memberRepository
-                .findByMemberEmailAndWithdrawalAtIsNull(request.memberEmail())
-                .orElseThrow(() -> new NotFoundException("해당 memberEmail의 회원을 찾을 수 없습니다."));
+        Member member = memberRepository
+                .findByMemberEmail(request.memberEmail())
+                .orElseThrow(() -> new UnauthorizedException("아이디 또는 비밀번호가 일치하지 않습니다."));
 
-        if (getMember.getAuthProvider() != AuthProvider.LOCAL) {
-            throw new UnauthorizedException("소셜로그인 사용자입니다.");
+        // 1. 상태 체크 (탈퇴, 잠금 등)
+        validateAccountStatusForLogin(member);
+
+        // 2. 제공자 체크 (소셜 계정은 이 로직으로 로그인 불가)
+        if (member.getAuthProvider() != AuthProvider.LOCAL) {
+            throw new UnauthorizedException("소셜 계정은 해당 로그인을 이용할 수 없습니다.");
         }
 
-        if(!passwordEncoder.matches(request.memberPwd(), getMember.getMemberPwd())){
-            throw new UnauthorizedException("비밀번호가 일치하지 않습니다.");
+        // 3. 비밀번호 매칭
+        if (!passwordEncoder.matches(request.memberPwd(), member.getMemberPwd())) {
+            throw new UnauthorizedException("아이디 또는 비밀번호가 일치하지 않습니다.");
         }
     }
 
@@ -174,7 +206,7 @@ public class MemberServiceImpl implements MemberService {
     public void updateMember(long memberNo, MemberRole role, UpdateMemberRequest request) {
         switch (role) {
             case USER -> updateUser(memberNo, request);
-            case GOV -> updateGov(request);
+            case GOV -> updateGov(memberNo, request);
             default -> throw new ForbiddenException("수정 권한이 없습니다.");
         }
     }
@@ -187,7 +219,7 @@ public class MemberServiceImpl implements MemberService {
      */
     private void updateUser(long memberNo, UpdateMemberRequest request) {
         Member member = memberRepository
-                .findByMemberNoAndWithdrawalAtIsNull(memberNo)
+                .findByMemberNoAndMemberStatus(memberNo,  MemberStatus.ACTIVE)
                 .orElseThrow(() -> new NotFoundException("회원이 존재하지 않습니다."));
 
         validateUpdate(request);
@@ -217,8 +249,14 @@ public class MemberServiceImpl implements MemberService {
      * 추후 관리자 승인 로직 추가 예정입니다.
      * </p>
      */
-    private void updateGov(UpdateMemberRequest request) {
-        // 추후 관리자 요청 로직 구현 후 완성 예정
+    private void updateGov(long memberNo, UpdateMemberRequest request) {
+        Member member = memberRepository
+                .findByMemberNoAndMemberStatus(memberNo, MemberStatus.ACTIVE)
+                .orElseThrow(() -> new NotFoundException("회원을 찾을 수 없습니다."));
+
+        validateUpdate(request);
+
+        // 지자체 요청 엔티티 구현 후 진행 예정
     }
 
     /**
@@ -228,7 +266,7 @@ public class MemberServiceImpl implements MemberService {
      * @throws ConflictException 이미 존재하는 이메일인 경우
      */
     private void validateDuplicateEmail(String email){
-        if(memberRepository.existsByMemberEmailAndWithdrawalAtIsNull(email)){
+        if(memberRepository.existsByMemberEmail(email)){
             throw new ConflictException("이미 존재하는 이메일입니다.");
         }
     }
@@ -240,42 +278,47 @@ public class MemberServiceImpl implements MemberService {
      * @return 변환된 LocalDate
      * @throws BadRequestException 형식이 잘못되었거나 미래 날짜인 경우
      */
-    private LocalDate parseBirth(String birth){
-        // 기본 형식 검증 (혹시 모를 방어)
+    private LocalDate parseBirth(String birth) {
         if (birth == null || !birth.matches("^\\d{6}$")) {
             throw new BadRequestException("생년월일은 6자리 숫자(yyMMdd)여야 합니다.");
         }
 
+        // 1. 년, 월, 일 분리 파싱 (가독성 증대)
         int yy = Integer.parseInt(birth.substring(0, 2));
-        int mmdd = Integer.parseInt(birth.substring(2));
+        String mmdd = birth.substring(2); // "1231" 형식 유지
 
-        // 현재 연도 기준 계산
-        LocalDate now = LocalDate.now();
-        int currentYear = now.getYear();
-        int currentCentury = (currentYear / 100) * 100;
+        // 2. 연도 계산 (2000년대 vs 1900년대)
+        int currentYear = LocalDate.now().getYear();
         int currentYearTwoDigits = currentYear % 100;
 
-        int fullYear = (yy <= currentYearTwoDigits)
-                ? currentCentury + yy
-                : currentCentury - 100 + yy;
+        // 예: 현재 26년인데 입력이 30이면 1930년, 20이면 2020년으로 판단
+        int fullYear = (yy <= currentYearTwoDigits) ? 2000 + yy : 1900 + yy;
 
-        // LocalDate 생성
-        LocalDate birthDate;
+        // 3. 날짜 조합 및 유효성 체크
         try {
-            birthDate = LocalDate.parse(
-                    fullYear + String.format("%04d", mmdd),
+            LocalDate birthDate = LocalDate.parse(
+                    fullYear + mmdd,
                     DateTimeFormatter.ofPattern("yyyyMMdd")
             );
+
+            // 미래 날짜 확인
+            if (birthDate.isAfter(LocalDate.now())) {
+                throw new BadRequestException("생년월일이 미래일 수 없습니다.");
+            }
+            return birthDate;
+
         } catch (DateTimeParseException e) {
-            throw new BadRequestException("유효하지 않은 생년월일입니다.");
+            throw new BadRequestException("유효하지 않은 날짜입니다 (월/일을 확인하세요).");
         }
+    }
 
-        // 미래 날짜 방어
-        if (birthDate.isAfter(now)) {
-            throw new BadRequestException("생년월일이 미래일 수 없습니다.");
+    private void validateAccountStatusForLogin(Member member){
+        switch(member.getMemberStatus()) {
+            case ACTIVE -> {}
+            case PENDING -> throw new UnauthorizedException("승인 대기 중인 계정입니다.");
+            case LOCKED -> throw new UnauthorizedException("잠긴 계정입니다.");
+            case WITHDRAWN -> throw new UnauthorizedException("탈퇴한 계정입니다.");
         }
-
-        return birthDate;
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.cu2mber.memberservice.common.advice;
 
 import com.cu2mber.memberservice.common.exception.CommonHttpException;
+import com.cu2mber.memberservice.common.exception.InvalidMemberStatusException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,17 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class CommonAdvice {
+
+    @ExceptionHandler(InvalidMemberStatusException.class)
+    public ResponseEntity<String> invalidMemberStatusHandler(
+            InvalidMemberStatusException e
+    ) {
+        log.warn("도메인 규칙 위반: {}", e.getMessage());
+
+        return ResponseEntity
+                .badRequest()
+                .body(e.getMessage());
+    }
 
     /**
      * {@link BindException} 예외를 처리하는 메서드입니다.
