@@ -21,6 +21,17 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class CommonAdvice {
 
+    /**
+     * {@link InvalidMemberStatusException} 예외를 처리하는 메서드입니다.
+     * <p>
+     * 회원의 상태가 도메인 규칙에 위배되는 경우 발생하며,
+     * 클라이언트 요청이 유효하지 않음을 의미하므로
+     * 400 Bad Request 응답을 반환합니다.
+     * </p>
+     *
+     * @param e 회원 상태 규칙 위반으로 발생한 예외
+     * @return 예외 메시지를 포함한 400 Bad Request 응답
+     */
     @ExceptionHandler(InvalidMemberStatusException.class)
     public ResponseEntity<String> invalidMemberStatusHandler(
             InvalidMemberStatusException e

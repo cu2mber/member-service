@@ -308,7 +308,7 @@ public class MemberServiceImpl implements MemberService {
             return birthDate;
 
         } catch (DateTimeParseException e) {
-            throw new BadRequestException("유효하지 않은 날짜입니다 (월/일을 확인하세요).");
+            throw new BadRequestException("유효하지 않은 생년월일입니다.");
         }
     }
 
