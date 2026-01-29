@@ -20,7 +20,7 @@ import java.util.List;
  * </p>
  */
 @Service
-@Transactional
+@Transactional(readOnly = true)
 @Slf4j
 @RequiredArgsConstructor
 public class LocalGovServiceImpl implements LocalGovService {
