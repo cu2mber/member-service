@@ -1,8 +1,11 @@
 package com.cu2mber.memberservice.member.domain;
 
+import com.cu2mber.memberservice.common.exception.InvalidMemberStatusException;
 import com.cu2mber.memberservice.member.enums.AuthProvider;
 import com.cu2mber.memberservice.member.enums.MemberRole;
+import com.cu2mber.memberservice.member.enums.MemberStatus;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,7 +22,7 @@ import java.time.LocalDateTime;
  */
 @Getter
 @Entity
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "members")
 public class Member {
 
@@ -57,7 +60,7 @@ public class Member {
     /**
      * 회원 비밀번호 (암호화된 값)
      */
-    @Column(length = 50, nullable = false)
+    @Column(length = 100, nullable = false)
     private String memberPwd;
 
     /**
@@ -75,27 +78,30 @@ public class Member {
     /**
      * 인증 제공자 정보 (LOCAL, KAKAO, GOOGLE 등)
      */
-    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
     private AuthProvider authProvider;
 
     /**
      * 인증 제공자에서 발급한 사용자 식별자
      */
-    @Column(nullable = false)
+    @Column
     private String providerId;
+
+    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    private MemberStatus memberStatus;
 
     /**
      * 회원 생성 일시
      */
-    @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     /**
      * 회원 정보 수정 일시
      */
-    private LocalDateTime updateAt;
+    private LocalDateTime updatedAt;
 
     /**
      * 회원 탈퇴 일시
@@ -105,7 +111,7 @@ public class Member {
     /**
      * Member 생성자 (외부 직접 생성 제한)
      */
-    private Member(String memberName, String memberEmail, MemberRole memberRole, String memberPwd, String memberPhone, LocalDate memberBirth, AuthProvider authProvider, String providerId) {
+    private Member(String memberName, String memberEmail, MemberRole memberRole, String memberPwd, String memberPhone, LocalDate memberBirth, AuthProvider authProvider, String providerId, MemberStatus  memberStatus) {
         this.memberName = memberName;
         this.memberEmail = memberEmail;
         this.memberRole = memberRole;
@@ -114,6 +120,7 @@ public class Member {
         this.memberBirth = memberBirth;
         this.authProvider = authProvider;
         this.providerId = providerId;
+        this.memberStatus = memberStatus;
     }
 
     /**
@@ -135,7 +142,8 @@ public class Member {
                 memberPhone,
                 memberBirth,
                 AuthProvider.LOCAL,
-                "LOCAL"
+                null,
+                MemberStatus.ACTIVE
         );
     }
 
@@ -160,7 +168,8 @@ public class Member {
                 memberPhone,
                 DEFAULT_GOV_BIRTH,
                 AuthProvider.LOCAL,
-                "LOCAL"
+                null,
+                MemberStatus.PENDING
         );
     }
 
@@ -185,7 +194,8 @@ public class Member {
                 memberPhone,
                 memberBirth,
                 authProvider,
-                providerId
+                providerId,
+                MemberStatus.ACTIVE
         );
     }
 
@@ -225,5 +235,29 @@ public class Member {
         if(phone != null) {
             this.memberPhone = phone;
         }
+    }
+
+    public void approve() {
+        if(this.memberStatus != MemberStatus.PENDING) {
+            throw new InvalidMemberStatusException("승인 가능한 상태가 아닙니다.");
+        }
+        this.memberStatus = MemberStatus.ACTIVE;
+    }
+
+    public void withdraw() {
+        this.withdrawalAt = LocalDateTime.now();
+        this.memberStatus = MemberStatus.WITHDRAWN;
+    }
+
+    // JPA 생명주기 이벤트 - 엔티티 저장 전
+    @PrePersist
+    public void prePersist() {
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // JPA 생명주기 이벤트 - 엔티티 수정 전
+    @PreUpdate
+    public void preUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }
